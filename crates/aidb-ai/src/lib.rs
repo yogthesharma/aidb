@@ -13,8 +13,8 @@ pub use embed::{
     normalize_local_model, register_custom_embedder, FakeEmbedder, LocalEmbedder, OpenAiEmbedder,
 };
 pub use secrets::{
-    configured_store, default_key_name, resolve_provider_key, resolve_secret, secret_store_uri,
-    validate_key_name, SecretStore,
+    configured_store, default_key_name, resolve_kimi_key, resolve_provider_key, resolve_secret,
+    secret_store_uri, validate_key_name, SecretStore,
 };
 
 pub trait Embedder: Send + Sync {
@@ -74,6 +74,10 @@ pub fn default_llm() -> (String, String) {
             "anthropic".into(),
             std::env::var("AIDB_LLM_MODEL").unwrap_or_else(|_| "claude-sonnet-4-20250514".into()),
         ),
+        Some("kimi") | Some("moonshot") => (
+            "kimi".into(),
+            std::env::var("AIDB_LLM_MODEL").unwrap_or_else(|_| "kimi-k2.5".into()),
+        ),
         _ => ("fake".into(), "aidb-fake".into()),
     }
 }
@@ -82,6 +86,7 @@ pub fn default_provider_model(provider: &str) -> &'static str {
     match provider {
         "openai" => "gpt-4.1-mini",
         "anthropic" => "claude-sonnet-4-20250514",
+        "kimi" | "moonshot" => "kimi-k2.5",
         _ => "aidb-fake",
     }
 }
@@ -100,7 +105,10 @@ pub fn known_embed_provider(provider: &str) -> bool {
 }
 
 pub fn known_provider(provider: &str) -> bool {
-    matches!(provider, "fake" | "openai" | "anthropic")
+    matches!(
+        provider,
+        "fake" | "openai" | "anthropic" | "kimi" | "moonshot"
+    )
 }
 
 pub fn embedder(config: &EmbedderConfig) -> Result<Arc<dyn Embedder>> {
@@ -191,7 +199,12 @@ pub fn llm_with_key(provider: &str, model: &str, key_name: Option<&str>) -> Resu
         "fake" => Ok(Box::new(FakeLlm {
             model: model.to_string(),
         })),
-        "openai" => Ok(Box::new(OpenAiLlm::new(model.to_string(), key_name)?)),
+        "openai" => Ok(Box::new(OpenAiLlm::openai(model.to_string(), key_name)?)),
+        "kimi" | "moonshot" => Ok(Box::new(OpenAiLlm::kimi(
+            provider.to_string(),
+            model.to_string(),
+            key_name,
+        )?)),
         "anthropic" => Ok(Box::new(AnthropicLlm::new(model.to_string(), key_name)?)),
         other => Err(Error::usage(format!("unknown llm provider: {other}"))),
     }
@@ -479,21 +492,153 @@ impl Llm for FakeLlm {
     }
 }
 
+/// OpenAI Chat Completions, including OpenAI-compatible hosts (Kimi / Moonshot).
 pub struct OpenAiLlm {
+    provider: String,
     model: String,
     api_key: String,
+    chat_url: String,
+    stream_usage: bool,
 }
 
 impl OpenAiLlm {
     pub fn new(model: String, key_name: Option<&str>) -> Result<Self> {
-        let api_key = resolve_provider_key("openai", key_name)?;
-        Ok(Self { model, api_key })
+        Self::openai(model, key_name)
     }
+
+    pub fn openai(model: String, key_name: Option<&str>) -> Result<Self> {
+        let api_key = resolve_provider_key("openai", key_name)?;
+        Ok(Self {
+            provider: "openai".into(),
+            model,
+            api_key,
+            chat_url: chat_completions_url("https://api.openai.com/v1"),
+            stream_usage: true,
+        })
+    }
+
+    pub fn kimi(provider: String, model: String, key_name: Option<&str>) -> Result<Self> {
+        let api_key = resolve_kimi_key(key_name)?;
+        Ok(Self {
+            provider,
+            model,
+            api_key,
+            chat_url: chat_completions_url(&kimi_base_url()),
+            stream_usage: false,
+        })
+    }
+}
+
+fn kimi_base_url() -> String {
+    std::env::var("AIDB_KIMI_BASE_URL")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://api.moonshot.ai/v1".into())
+}
+
+fn chat_completions_url(base: &str) -> String {
+    format!("{}/chat/completions", base.trim().trim_end_matches('/'))
+}
+
+fn post_chat(url: &str, api_key: &str, body: serde_json::Value) -> Result<ureq::Response> {
+    match ureq::post(url)
+        .set("Authorization", &format!("Bearer {api_key}"))
+        .send_json(body)
+    {
+        Ok(resp) => Ok(resp),
+        Err(ureq::Error::Status(code, resp)) => {
+            let body = resp.into_string().unwrap_or_default();
+            let hint = if code == 404 {
+                " (Kimi 404 usually means the model id is unknown — set AIDB_LLM_MODEL to one from GET /v1/models, e.g. kimi-k2.5)"
+            } else {
+                ""
+            };
+            Err(Error::ai(format!("{url}: HTTP {code}{hint}: {body}")))
+        }
+        Err(err) => Err(Error::ai(err.to_string())),
+    }
+}
+
+/// `AIDB_LLM_TEMPERATURE` is sent as Chat Completions `temperature` when set.
+/// Unset means the provider default. Range is 0..=2.
+pub fn llm_temperature() -> Result<Option<f64>> {
+    let Some(raw) = std::env::var("AIDB_LLM_TEMPERATURE")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    else {
+        return Ok(None);
+    };
+    let value: f64 = raw.parse().map_err(|_| {
+        Error::usage(format!(
+            "AIDB_LLM_TEMPERATURE must be a number between 0 and 2 (got {raw})"
+        ))
+    })?;
+    if !value.is_finite() || !(0.0..=2.0).contains(&value) {
+        return Err(Error::usage(format!(
+            "AIDB_LLM_TEMPERATURE must be a number between 0 and 2 (got {raw})"
+        )));
+    }
+    Ok(Some(value))
+}
+
+fn with_temperature(mut body: serde_json::Value) -> Result<serde_json::Value> {
+    if let Some(temperature) = llm_temperature()? {
+        body["temperature"] = serde_json::json!(temperature);
+    }
+    Ok(body)
+}
+
+/// Kimi-K2.5 thinking is on by default at Moonshot and makes generate slow.
+/// Harbor and SQL generate want the answer in `message.content`, so thinking
+/// stays off unless `AIDB_KIMI_THINKING=1`.
+fn kimi_thinking() -> bool {
+    match std::env::var("AIDB_KIMI_THINKING") {
+        Ok(raw) => matches!(
+            raw.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "on" | "enabled"
+        ),
+        Err(_) => false,
+    }
+}
+
+fn with_chat_body(provider: &str, mut body: serde_json::Value) -> Result<serde_json::Value> {
+    if matches!(provider, "kimi" | "moonshot") {
+        // Moonshot fixes temperature per thinking mode (0.6 instant / 1.0 thinking).
+        // Passing any other value is HTTP 400. Do not send the field.
+        if !kimi_thinking() {
+            body["thinking"] = serde_json::json!({ "type": "disabled" });
+        }
+        return Ok(body);
+    }
+    with_temperature(body)
+}
+
+fn openai_choice_text(value: &serde_json::Value) -> Option<String> {
+    let message = value.pointer("/choices/0/message")?;
+    let content = message
+        .get("content")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+    if !content.is_empty() {
+        return Some(content.to_string());
+    }
+    let reasoning = message
+        .get("reasoning_content")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+    if !reasoning.is_empty() {
+        return Some(reasoning.to_string());
+    }
+    None
 }
 
 impl Llm for OpenAiLlm {
     fn provider(&self) -> &str {
-        "openai"
+        &self.provider
     }
 
     fn model(&self) -> &str {
@@ -501,24 +646,21 @@ impl Llm for OpenAiLlm {
     }
 
     fn complete(&self, prompt: &str, content: &str) -> Result<Completion> {
-        let body = serde_json::json!({
-            "model": self.model,
-            "messages": [{
-                "role": "user",
-                "content": format!("{prompt}\n\n{content}")
-            }],
-        });
-        let resp = ureq::post("https://api.openai.com/v1/chat/completions")
-            .set("Authorization", &format!("Bearer {}", self.api_key))
-            .send_json(body)
-            .map_err(|err| Error::ai(err.to_string()))?;
+        let body = with_chat_body(
+            &self.provider,
+            serde_json::json!({
+                "model": self.model,
+                "messages": [{
+                    "role": "user",
+                    "content": format!("{prompt}\n\n{content}")
+                }],
+            }),
+        )?;
+        let resp = post_chat(&self.chat_url, &self.api_key, body)?;
         let value: serde_json::Value =
             resp.into_json().map_err(|err| Error::ai(err.to_string()))?;
-        let text = value
-            .pointer("/choices/0/message/content")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::ai("openai chat response missing content"))?
-            .to_string();
+        let text = openai_choice_text(&value)
+            .ok_or_else(|| Error::ai(format!("{} chat response missing content", self.provider)))?;
         let usage = value.get("usage");
         let prompt_tokens = usage
             .and_then(|u| u.get("prompt_tokens"))
@@ -543,19 +685,21 @@ impl Llm for OpenAiLlm {
         content: &str,
         on_token: &mut dyn FnMut(&str) -> Result<()>,
     ) -> Result<Completion> {
-        let body = serde_json::json!({
-            "model": self.model,
-            "messages": [{
-                "role": "user",
-                "content": format!("{prompt}\n\n{content}")
-            }],
-            "stream": true,
-            "stream_options": { "include_usage": true },
-        });
-        let resp = ureq::post("https://api.openai.com/v1/chat/completions")
-            .set("Authorization", &format!("Bearer {}", self.api_key))
-            .send_json(body)
-            .map_err(|err| Error::ai(err.to_string()))?;
+        let mut body = with_chat_body(
+            &self.provider,
+            serde_json::json!({
+                "model": self.model,
+                "messages": [{
+                    "role": "user",
+                    "content": format!("{prompt}\n\n{content}")
+                }],
+                "stream": true,
+            }),
+        )?;
+        if self.stream_usage {
+            body["stream_options"] = serde_json::json!({ "include_usage": true });
+        }
+        let resp = post_chat(&self.chat_url, &self.api_key, body)?;
         consume_openai_stream(BufReader::new(resp.into_reader()), on_token)
     }
 }
@@ -1113,9 +1257,73 @@ mod tests {
     }
 
     #[test]
+    fn llm_temperature_comes_from_env() {
+        let _guard = secrets::test_env_lock();
+        let prev = std::env::var("AIDB_LLM_TEMPERATURE").ok();
+        unsafe { std::env::remove_var("AIDB_LLM_TEMPERATURE") };
+        assert_eq!(llm_temperature().unwrap(), None);
+        unsafe { std::env::set_var("AIDB_LLM_TEMPERATURE", "0.3") };
+        assert_eq!(llm_temperature().unwrap(), Some(0.3));
+        let body = with_temperature(serde_json::json!({"model": "kimi"})).unwrap();
+        assert_eq!(body["temperature"], 0.3);
+        unsafe { std::env::set_var("AIDB_LLM_TEMPERATURE", "9") };
+        assert!(llm_temperature().is_err());
+        unsafe { std::env::set_var("AIDB_LLM_TEMPERATURE", "hot") };
+        assert!(llm_temperature().is_err());
+        match prev {
+            Some(value) => unsafe { std::env::set_var("AIDB_LLM_TEMPERATURE", value) },
+            None => unsafe { std::env::remove_var("AIDB_LLM_TEMPERATURE") },
+        }
+    }
+
+    #[test]
+    fn kimi_chat_body_disables_thinking_by_default() {
+        let _guard = secrets::test_env_lock();
+        let prev_think = std::env::var("AIDB_KIMI_THINKING").ok();
+        let prev_temp = std::env::var("AIDB_LLM_TEMPERATURE").ok();
+        unsafe { std::env::remove_var("AIDB_KIMI_THINKING") };
+        unsafe { std::env::set_var("AIDB_LLM_TEMPERATURE", "0.3") };
+        let kimi = with_chat_body("kimi", serde_json::json!({ "model": "kimi-k2.5" })).unwrap();
+        assert_eq!(kimi["thinking"]["type"], "disabled");
+        assert!(kimi.get("temperature").is_none());
+        let openai = with_chat_body("openai", serde_json::json!({ "model": "gpt" })).unwrap();
+        assert!(openai.get("thinking").is_none());
+        assert_eq!(openai["temperature"], 0.3);
+        unsafe { std::env::set_var("AIDB_KIMI_THINKING", "1") };
+        let thinking = with_chat_body("kimi", serde_json::json!({ "model": "kimi-k2.5" })).unwrap();
+        assert!(thinking.get("thinking").is_none());
+        assert!(thinking.get("temperature").is_none());
+        match prev_think {
+            Some(value) => unsafe { std::env::set_var("AIDB_KIMI_THINKING", value) },
+            None => unsafe { std::env::remove_var("AIDB_KIMI_THINKING") },
+        }
+        match prev_temp {
+            Some(value) => unsafe { std::env::set_var("AIDB_LLM_TEMPERATURE", value) },
+            None => unsafe { std::env::remove_var("AIDB_LLM_TEMPERATURE") },
+        }
+    }
+
+    #[test]
+    fn kimi_falls_back_to_reasoning_content_when_content_is_empty() {
+        let value = serde_json::json!({
+            "choices": [{ "message": { "content": "", "reasoning_content": "14 days" } }]
+        });
+        assert_eq!(openai_choice_text(&value).as_deref(), Some("14 days"));
+    }
+
+    #[test]
     fn anthropic_is_a_known_provider() {
         assert!(known_provider("anthropic"));
+        assert!(known_provider("kimi"));
+        assert!(known_provider("moonshot"));
         assert!(!known_provider("hosted-mystery"));
+        match llm_with_key("kimi", "kimi-k2.5", Some("AIDB_MISSING_PHASE25")) {
+            Ok(_) => panic!("custom key name must resolve"),
+            Err(err) => assert!(
+                err.to_string().contains("AIDB_MISSING_PHASE25 is not set"),
+                "{err}"
+            ),
+        }
         match llm_with_key(
             "anthropic",
             "claude-sonnet-4-20250514",

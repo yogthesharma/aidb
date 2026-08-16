@@ -236,6 +236,16 @@ export class Database {
 export class AI {
   static runtime = RUNTIME;
 
+  static subscribeTokens(callback) {
+    native.subscribeTokens((event) => {
+      callback({
+        runId: String(event.run_id ?? event.runId ?? ""),
+        seq: Number(event.seq ?? 0),
+        text: String(event.text ?? ""),
+      });
+    });
+  }
+
   static async open(dbPath, options = {}) {
     const inner = native.openDb(dbPath, options.embedding ?? null);
     return new Database(inner, dbPath);

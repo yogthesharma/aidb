@@ -241,17 +241,27 @@ fn the_model_catalog_accepts_the_supported_providers_and_rejects_the_rest() {
         "CREATE MODEL cheap PROVIDER fake KIND llm",
         "CREATE MODEL gpt PROVIDER openai KIND llm MODEL 'gpt-4.1-mini'",
         "CREATE MODEL claude PROVIDER anthropic KIND llm",
+        "CREATE MODEL kimi PROVIDER kimi KIND llm",
     ] {
         db.execute(sql).unwrap_or_else(|e| panic!("{sql}: {e}"));
     }
     let rows = db
         .query("SELECT name, provider, provider_model, kind FROM models ORDER BY name")
         .expect("models");
-    assert_eq!(column_values(&rows, "name"), vec!["cheap", "claude", "gpt"]);
+    assert_eq!(
+        column_values(&rows, "name"),
+        vec!["cheap", "claude", "gpt", "kimi"]
+    );
     assert_eq!(
         cell(&rows, 1, "provider_model"),
         "claude-sonnet-4-20250514",
         "a provider has a documented default model"
+    );
+    assert_eq!(cell(&rows, 3, "provider"), "kimi");
+    assert_eq!(
+        cell(&rows, 3, "provider_model"),
+        "kimi-k2.5",
+        "kimi is OpenAI-compatible with a Moonshot default model"
     );
 
     assert_err_contains(

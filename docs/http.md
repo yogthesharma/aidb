@@ -41,6 +41,8 @@ cd studio && npm install && npm run dev   # terminal 2
 
 See [`studio/README.md`](../studio/README.md) for bearer injection and tests.
 
+Product UIs that do **not** speak SQL from the browser: [`examples/support`](../examples/support/README.md) and [`examples/chat`](../examples/chat/README.md) (Fastify `/api/*` + Vite). Studio remains the inspect face over `aidb serve`.
+
 Live generate tokens arrive as WebSocket `{"type":"token",…}`. The prefix in the
 file is still `run_events`; the socket is how the UI refreshes while the write
 mutex holds the connection.

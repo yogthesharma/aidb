@@ -397,7 +397,7 @@ fn handle_sql(db: &Aidb, body: &[u8], hub: &Hub) -> Response {
 
 fn sql_touches_file(sql: &str) -> bool {
     let lower = sql.to_ascii_lowercase();
-    if lower.contains("aidb_") {
+    if aidb_function_call(&lower) {
         return true;
     }
     let first = lower.trim_start();
@@ -408,6 +408,22 @@ fn sql_touches_file(sql: &str) -> bool {
         || first.starts_with("drop")
         || first.starts_with("alter")
         || first.starts_with("replace")
+}
+
+/// True for `aidb_generate(` / `aidb_search(` — not for reading table `aidb_meta`.
+fn aidb_function_call(lower: &str) -> bool {
+    let mut rest = lower;
+    while let Some(idx) = rest.find("aidb_") {
+        rest = &rest[idx + 5..];
+        let ident_end = rest
+            .find(|c: char| !c.is_ascii_lowercase() && c != '_')
+            .unwrap_or(rest.len());
+        if rest[ident_end..].trim_start().starts_with('(') {
+            return true;
+        }
+        rest = &rest[ident_end..];
+    }
+    false
 }
 
 fn query_token(target: &str) -> Option<&str> {
@@ -609,5 +625,27 @@ mod tests {
             .into_json()
             .expect("json");
         assert_eq!(runs["rows"][0][0], 1);
+    }
+
+    #[test]
+    fn reading_aidb_meta_is_not_a_file_write() {
+        assert!(!sql_touches_file(
+            "SELECT value FROM aidb_meta WHERE key = 'schema_version'"
+        ));
+        assert!(!sql_touches_file(
+            "SELECT COUNT(*) FROM documents WHERE index_status = 'ready'"
+        ));
+        assert!(!sql_touches_file(
+            "SELECT id, kind, status FROM runs ORDER BY created_at_ms DESC LIMIT 10"
+        ));
+        assert!(sql_touches_file(
+            "SELECT aidb_generate('Summarize this', content) FROM aidb_search('refunds', 4)"
+        ));
+        assert!(sql_touches_file(
+            "SELECT aidb_insert_document('Refunds', '14 days', '{}')"
+        ));
+        assert!(sql_touches_file(
+            "INSERT INTO tickets (subject, body, created_at_ms) VALUES ('x', 'y', 1)"
+        ));
     }
 }

@@ -1,9 +1,14 @@
 //! In-process Node addon. The TypeScript face loads this; it does not spawn `aidb sql`.
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-use aidb::{open, open_with, query_to_json, Aidb, EmbedderConfig, SqlOutput};
+use aidb::{
+    open, open_with, query_to_json, subscribe_tokens as engine_subscribe_tokens, Aidb,
+    EmbedderConfig, SqlOutput,
+};
 use napi::bindgen_prelude::*;
+use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
+use napi::JsFunction;
 use napi_derive::napi;
 
 #[napi]
@@ -18,7 +23,7 @@ pub struct EmbeddingOptions {
 
 #[napi]
 pub struct Database {
-    inner: Mutex<Option<Aidb>>,
+    inner: Arc<Mutex<Option<Aidb>>>,
     path: String,
 }
 
@@ -30,11 +35,25 @@ impl Database {
     }
 
     #[napi]
-    pub fn query(&self, sql: String) -> Result<serde_json::Value> {
-        match self.with_db(|db| db.sql(&sql))? {
-            SqlOutput::Query(result) => Ok(query_to_json(&result)),
-            SqlOutput::Execute(_) => Err(Error::from_reason("expected a query")),
-        }
+    pub async fn query(&self, sql: String) -> Result<serde_json::Value> {
+        let inner = Arc::clone(&self.inner);
+        napi::tokio::task::spawn_blocking(move || {
+            let guard = inner
+                .lock()
+                .map_err(|_| Error::from_reason("database lock poisoned"))?;
+            let db = guard
+                .as_ref()
+                .ok_or_else(|| Error::from_reason("database is closed"))?;
+            match db
+                .sql(&sql)
+                .map_err(|err| Error::from_reason(err.to_string()))?
+            {
+                SqlOutput::Query(result) => Ok(query_to_json(&result)),
+                SqlOutput::Execute(_) => Err(Error::from_reason("expected a query")),
+            }
+        })
+        .await
+        .map_err(|err| Error::from_reason(err.to_string()))?
     }
 
     #[napi]
@@ -87,7 +106,23 @@ pub fn open_db(path: String, embedding: Option<EmbeddingOptions>) -> Result<Data
     }
     .map_err(|err| Error::from_reason(err.to_string()))?;
     Ok(Database {
-        inner: Mutex::new(Some(db)),
+        inner: Arc::new(Mutex::new(Some(db))),
         path,
     })
+}
+
+/// Live `run_events` tokens. Same events `aidb serve` publishes on `/ws`.
+#[napi]
+pub fn subscribe_tokens(callback: JsFunction) -> Result<()> {
+    let tsfn: ThreadsafeFunction<serde_json::Value, ErrorStrategy::Fatal> =
+        callback.create_threadsafe_function(0, |ctx| Ok(vec![ctx.value]))?;
+    engine_subscribe_tokens(Arc::new(move |event| {
+        let payload = serde_json::json!({
+            "run_id": event.run_id,
+            "seq": event.seq,
+            "text": event.text,
+        });
+        let _ = tsfn.call(payload, ThreadsafeFunctionCallMode::NonBlocking);
+    }));
+    Ok(())
 }

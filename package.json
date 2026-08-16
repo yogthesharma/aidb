@@ -1,0 +1,14 @@
+{
+  "name": "aidb",
+  "private": true,
+  "description": "Embedded AI database. pnpm example:<name> runs a frontend + AIDB backend.",
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "example:support": "node scripts/dev.mjs support",
+    "example:chat": "node scripts/dev.mjs chat"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

@@ -82,6 +82,7 @@ SELECT aidb_set_policy('{"allow":["search","generate"],"max_usd":1}');
 SELECT aidb_tool('send.email', '{"to":"alice@desk.test"}');
 SELECT aidb_experiment('{"dataset":"support_gold","plans":["naive","cascade"],"k":3}');
 SELECT plan, accuracy, cost_usd FROM experiment_results ORDER BY cost_usd;
+CREATE MODEL desk PROVIDER kimi KIND llm;
 ```
 
 Demo scripts per phase live in [`examples/sql/`](../examples/sql/).

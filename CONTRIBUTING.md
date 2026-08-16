@@ -50,10 +50,14 @@ AIDB_CLI_BIN=./target/debug/aidb node bindings/typescript/test.mjs
 AIDB_CLI_BIN=./target/debug/aidb python3 bindings/python/test_open.py
 ```
 
-Stock desk and Studio:
+Stock desk, example UIs, and Studio:
 
 ```bash
 node examples/stock/stock.mjs demo --db /tmp/desk.db
+pnpm --filter harbor-backend demo
+pnpm --filter chat-backend demo
+pnpm example:support               # Harbor UI; keys from `.env`
+pnpm example:chat                  # Relay chatbot UI
 cd studio && npm ci && npm test && npm run build
 ```
 

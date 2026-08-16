@@ -46,13 +46,19 @@ const db = await AI.open("./app.db");
 await db.query("SELECT aidb_search('how do refunds work?', 3)");
 ```
 
-Keys stay in the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`). They are
-never stored in the file. Without keys, generate uses the fake model so tests and
-demos stay offline.
+Keys stay in the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`KIMI_API_KEY` / `MOONSHOT_API_KEY`), typically via `.env` at the repo root.
+They are never stored in the file. Without keys, generate uses the fake model
+so tests and demos stay offline. Optional: `AIDB_LLM_MODEL`,
+`AIDB_LLM_TEMPERATURE` (0..=2; omit for the provider default; ignored for Kimi),
+`AIDB_KIMI_BASE_URL`. Example UIs from the repo root: `pnpm example:support`
+(Harbor) and `pnpm example:chat` (Relay chatbot).
 
 ## Next
 
 - [SQL surface](sql.md) — generate, classify, agents, sessions, tokens
 - [HTTP and Studio](http.md) — inspect the same file in a browser
-- [`examples/stock`](../examples/stock/README.md) — an AIDB-only application
+- [`examples/stock`](../examples/stock/README.md) — an AIDB-only CLI application
+- [`examples/support`](../examples/support/README.md) — support desk UI (Fastify + Vite)
+- [`examples/chat`](../examples/chat/README.md) — ChatGPT-style UI on an empty file
 - [`PHASES.md`](../PHASES.md) — what each phase proved

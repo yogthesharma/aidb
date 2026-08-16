@@ -93,6 +93,26 @@ test("insert, search and generate all go through the same engine", async () => {
   await db.close();
 });
 
+test("subscribeTokens sees generate chunks while the query is in flight", async () => {
+  const seen = [];
+  AI.subscribeTokens((event) => {
+    if (event.text) {
+      seen.push(event.text);
+    }
+  });
+  const db = await AI.open(tempDb("stream"));
+  const text = String(
+    (
+      await db.query(
+        "SELECT aidb_generate('Summarize this', 'Refunds are issued within 14 days of purchase.')"
+      )
+    ).rows[0][0]
+  );
+  assert.ok(seen.length > 1, `expected streamed chunks, got ${JSON.stringify(seen)}`);
+  assert.equal(seen.join(""), text);
+  await db.close();
+});
+
 test("execute reports affected rows and query returns typed values", async () => {
   const db = await AI.open(tempDb("execute"));
   await db.execute("CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT, score REAL)");
@@ -256,6 +276,4 @@ for (const dir of dirs) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 console.log(`\ntypescript: ${tests.length - failed} passed, ${failed} failed`);
-if (failed > 0) {
-  process.exit(1);
-}
+process.exit(failed > 0 ? 1 : 0);

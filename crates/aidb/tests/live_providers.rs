@@ -128,6 +128,46 @@ fn anthropic_generation_goes_through_the_same_run_engine() {
     );
 }
 
+fn kimi_key() -> Option<&'static str> {
+    if std::env::var("KIMI_API_KEY").is_ok() {
+        Some("KIMI_API_KEY")
+    } else if std::env::var("MOONSHOT_API_KEY").is_ok() {
+        Some("MOONSHOT_API_KEY")
+    } else {
+        None
+    }
+}
+
+#[test]
+fn kimi_generation_uses_the_openai_compatible_chat_endpoint() {
+    if !live() {
+        eprintln!("skipping: set AIDB_LIVE_TESTS=1 to run live provider tests");
+        return;
+    }
+    let Some(key_name) = kimi_key() else {
+        eprintln!("skipping: KIMI_API_KEY or MOONSHOT_API_KEY is not set");
+        return;
+    };
+    let model = std::env::var("AIDB_LLM_MODEL").unwrap_or_else(|_| "kimi-k2.5".into());
+    let tmp = TempDb::new("live-kimi");
+    let db = tmp.open();
+    db.execute(&format!(
+        "CREATE MODEL desk PROVIDER kimi KIND llm MODEL '{model}' KEY_NAME '{key_name}'"
+    ))
+    .expect("model");
+    let answer = db
+        .query("SELECT aidb_generate('Reply with the single word: ready', 'ignored context')")
+        .expect("generate");
+    assert!(!answer.rows[0][0].to_string().trim().is_empty());
+    assert_eq!(
+        scalar(
+            &db,
+            "SELECT status FROM runs WHERE kind = 'generate' ORDER BY created_at_ms DESC, rowid DESC LIMIT 1"
+        ),
+        "succeeded"
+    );
+}
+
 #[test]
 fn a_local_fastembed_space_indexes_without_the_network() {
     if !live() {

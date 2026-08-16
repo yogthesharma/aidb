@@ -132,7 +132,7 @@ pub fn execute_create_model(conn: &Connection, spec: &CreateModel) -> Result<u64
     }
     if !aidb_ai::known_provider(&spec.provider) {
         return Err(Error::usage(format!(
-            "unknown model provider: {} (use fake, openai, or anthropic)",
+            "unknown model provider: {} (use fake, openai, anthropic, or kimi)",
             spec.provider
         )));
     }
@@ -415,6 +415,13 @@ mod tests {
         assert_eq!(spec.provider, "anthropic");
         assert_eq!(spec.provider_model, "claude-sonnet-4-20250514");
         assert!(!spec.if_not_exists);
+
+        let spec = parse_create_model("CREATE MODEL desk PROVIDER kimi KIND llm").unwrap();
+        assert_eq!(spec.provider, "kimi");
+        assert_eq!(spec.provider_model, "kimi-k2.5");
+        let spec = parse_create_model("CREATE MODEL desk PROVIDER moonshot KIND llm").unwrap();
+        assert_eq!(spec.provider, "moonshot");
+        assert_eq!(spec.provider_model, "kimi-k2.5");
 
         let spec = parse_create_model("CREATE MODEL gpt PROVIDER openai KEY_NAME 'OPENAI_API_KEY'")
             .unwrap();

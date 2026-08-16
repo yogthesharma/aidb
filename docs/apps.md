@@ -7,20 +7,22 @@ The application owns ingest, domain tables, and screens. Copy `app.db` and you
 copied the audit trail. There is no vector service or trace backend to keep in
 sync.
 
-Shipped example: [`examples/stock`](../examples/stock/README.md) (equity research
-desk). SQL for the primitives: [`sql.md`](sql.md).
+Shipped examples: [`examples/stock`](../examples/stock/README.md) (equity research
+desk, CLI), [`examples/support`](../examples/support/README.md) (support desk),
+and [`examples/chat`](../examples/chat/README.md) (ChatGPT-style chat on an empty
+file). SQL for the primitives: [`sql.md`](sql.md).
 
 | Project | What it does | In the file | You write |
 | --- | --- | --- | --- |
 | Cited knowledge assistant | Answer only from a corpus, with sources | `aidb_search`, generate-over-search `{answer, sources[]}` | ingest, the prompt, the UI |
-| Support / refunds bot | Keyword + semantic retrieval on policy docs | hybrid `aidb_search`, metadata filter | department tags, the channel |
+| Support / refunds bot | Keyword + semantic retrieval on policy docs | hybrid `aidb_search`, metadata filter | department tags — **this repo** (`examples/support`) |
 | Equity / research desk | Filings → brief → classify headlines → email digest | search, generate, classify, agent, HITL | `watchlist` / `signals` — **this repo** |
 | Ticket or headline classifier | Label a row, link it to the generate run | `aidb_classify`, `aidb_last_run_id()` | `INSERT INTO tickets …` |
 | Structured extraction | Schema-valid JSON from a filing, invoice, or email | `aidb_generate(…, schema)`; mismatch fails the run | the schema, destination columns |
 | Approval-gated ops agent | Draft, then park before `send.email` / writes | agent or workflow, `awaiting_approval`, `aidb_resume` | the irreversible tool |
 | Decide-loop analyst | Model picks search vs generate vs tool, with args | `"decide":true`, filters, tool JSON args | the goal, `max_steps` |
 | Personal memory assistant | “Remember that I prefer short answers” | `aidb_memory_insert` / `_search` (documents) | user id; not a messages table |
-| Threaded research session | Turn 1 / 2 / 3 over the same desk | `aidb_session`, `session_turns` view | a chat UI if you want one |
+| Threaded research session | Turn 1 / 2 / 3 over the same desk | `aidb_session`, `session_turns` view | a chat UI — **this repo** (`examples/chat`) |
 | Eval / plan bakeoff | Naive vs cascade under a budget | `aidb_experiment`, `experiment_results` | labeled gold questions |
 | Multi-space search | Legal embeddings ≠ product embeddings | `aidb_create_space`, `aidb_search(..., space)` | which corpus uses which space |
 | Policy-bounded copilot | Deny-list, USD/ms cap, HITL overlay | `aidb_set_policy`, capability catalog | the policy JSON |

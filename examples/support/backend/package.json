@@ -1,0 +1,14 @@
+{
+  "name": "harbor-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Harbor Fastify API over one AIDB file.",
+  "scripts": {
+    "start": "node index.mjs",
+    "demo": "node index.mjs --demo --offline"
+  },
+  "dependencies": {
+    "fastify": "^5.4.0"
+  }
+}

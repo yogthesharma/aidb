@@ -966,9 +966,21 @@ impl BindContext {
     }
 
     pub fn llm(&self) -> (String, String) {
-        self.llm_model()
+        let (provider, model) = self
+            .llm_model()
             .map(|model| (model.provider.clone(), model.provider_model.clone()))
-            .unwrap_or_else(default_llm_from_env)
+            .unwrap_or_else(default_llm_from_env);
+        // Hosted providers: AIDB_LLM_MODEL overrides a stale catalog row.
+        let model = if provider == "fake" {
+            model
+        } else {
+            std::env::var("AIDB_LLM_MODEL")
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or(model)
+        };
+        (provider, model)
     }
 
     pub fn llm_catalog_name(&self) -> Option<&str> {
@@ -997,6 +1009,10 @@ fn default_llm_from_env() -> (String, String) {
             "anthropic".into(),
             std::env::var("AIDB_LLM_MODEL").unwrap_or_else(|_| "claude-sonnet-4-20250514".into()),
         ),
+        Some("kimi") | Some("moonshot") => (
+            "kimi".into(),
+            std::env::var("AIDB_LLM_MODEL").unwrap_or_else(|_| "kimi-k2.5".into()),
+        ),
         _ => ("fake".into(), "aidb-fake".into()),
     }
 }
@@ -1004,6 +1020,27 @@ fn default_llm_from_env() -> (String, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn aidb_llm_model_overrides_a_stale_kimi_catalog_row() {
+        let mut ctx = BindContext::engine();
+        ctx.models.push(ModelRef {
+            name: "desk".into(),
+            kind: "llm".into(),
+            provider: "kimi".into(),
+            provider_model: "kimi-k2-turbo-preview".into(),
+            key_name: Some("KIMI_API_KEY".into()),
+        });
+        let prev = std::env::var("AIDB_LLM_MODEL").ok();
+        unsafe { std::env::set_var("AIDB_LLM_MODEL", "kimi-k2.5") };
+        let (provider, model) = ctx.llm();
+        match prev {
+            Some(value) => unsafe { std::env::set_var("AIDB_LLM_MODEL", value) },
+            None => unsafe { std::env::remove_var("AIDB_LLM_MODEL") },
+        }
+        assert_eq!(provider, "kimi");
+        assert_eq!(model, "kimi-k2.5");
+    }
 
     #[test]
     fn search_plan_is_scan_filter_embed_similarity_topk() {

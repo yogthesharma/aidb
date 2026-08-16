@@ -1,0 +1,5 @@
+packages:
+  - examples/support/backend
+  - examples/support/frontend
+  - examples/chat/backend
+  - examples/chat/frontend

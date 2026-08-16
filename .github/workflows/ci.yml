@@ -33,6 +33,10 @@ jobs:
           python-version: "3.11"
       - uses: Swatinem/rust-cache@v2
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Format
         run: cargo fmt --all -- --check
 
@@ -67,6 +71,16 @@ jobs:
 
       - name: Stock desk app
         run: node examples/stock/stock.mjs demo --db "${{ runner.temp }}/desk.db"
+
+      - name: Support desk app
+        run: pnpm install && pnpm --filter harbor-frontend build && pnpm --filter harbor-backend demo
+        env:
+          AIDB_DB: ${{ runner.temp }}/support.db
+
+      - name: Chat desk app
+        run: pnpm --filter chat-frontend build && pnpm --filter chat-backend demo
+        env:
+          AIDB_DB: ${{ runner.temp }}/chat.db
 
       - name: Studio inspect face
         run: npm ci && npm test && npm run build

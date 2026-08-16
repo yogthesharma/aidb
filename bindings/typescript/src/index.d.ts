@@ -74,7 +74,14 @@ export declare class Database {
   close(): Promise<void>;
 }
 
+export type TokenEvent = {
+  runId: string;
+  seq: number;
+  text: string;
+};
+
 export declare class AI {
   static readonly runtime: "napi";
+  static subscribeTokens(callback: (event: TokenEvent) => void): void;
   static open(path: string, options?: OpenOptions): Promise<Database>;
 }

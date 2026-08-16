@@ -1,0 +1,14 @@
+{
+  "name": "chat-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "ChatGPT-style Fastify API over one empty AIDB file.",
+  "scripts": {
+    "start": "node index.mjs",
+    "demo": "node index.mjs --demo --offline"
+  },
+  "dependencies": {
+    "fastify": "^5.4.0"
+  }
+}

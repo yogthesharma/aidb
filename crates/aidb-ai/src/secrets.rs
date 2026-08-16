@@ -21,6 +21,7 @@ pub fn default_key_name(provider: &str) -> &'static str {
     match provider {
         "anthropic" => "ANTHROPIC_API_KEY",
         "openai" => "OPENAI_API_KEY",
+        "kimi" | "moonshot" => "KIMI_API_KEY",
         _ => "AIDB_API_KEY",
     }
 }
@@ -62,11 +63,28 @@ pub fn resolve_secret(name: &str) -> Result<String> {
 }
 
 pub fn resolve_provider_key(provider: &str, key_name: Option<&str>) -> Result<String> {
+    if matches!(provider, "kimi" | "moonshot") {
+        return resolve_kimi_key(key_name);
+    }
     let name = match key_name.map(str::trim).filter(|s| !s.is_empty()) {
         Some(name) => name,
         None => default_key_name(provider),
     };
     resolve_secret(name)
+}
+
+/// Kimi/Moonshot accept `KIMI_API_KEY` or `MOONSHOT_API_KEY`. A stored `key_name` wins.
+pub fn resolve_kimi_key(key_name: Option<&str>) -> Result<String> {
+    if let Some(name) = key_name.map(str::trim).filter(|s| !s.is_empty()) {
+        return resolve_secret(name);
+    }
+    match resolve_secret("KIMI_API_KEY") {
+        Ok(value) => Ok(value),
+        Err(_) => match resolve_secret("MOONSHOT_API_KEY") {
+            Ok(value) => Ok(value),
+            Err(_) => Err(missing("KIMI_API_KEY")),
+        },
+    }
 }
 
 fn missing(name: &str) -> Error {
@@ -317,5 +335,26 @@ mod tests {
         let err = resolve_secret("AIDB_PHASE25_MISSING").unwrap_err();
         assert_eq!(err.to_string(), "AIDB_PHASE25_MISSING is not set");
         remove_var("AIDB_SECRET_STORE");
+    }
+
+    #[test]
+    fn kimi_accepts_moonshot_api_key_when_kimi_is_unset() {
+        let _guard = env_lock();
+        let prev_kimi = std::env::var("KIMI_API_KEY").ok();
+        let prev_moon = std::env::var("MOONSHOT_API_KEY").ok();
+        remove_var("KIMI_API_KEY");
+        set_var("MOONSHOT_API_KEY", "ms-from-env");
+        assert_eq!(resolve_kimi_key(None).unwrap(), "ms-from-env");
+        remove_var("MOONSHOT_API_KEY");
+        let err = resolve_kimi_key(None).unwrap_err();
+        assert!(err.to_string().contains("KIMI_API_KEY is not set"), "{err}");
+        match prev_kimi {
+            Some(value) => set_var("KIMI_API_KEY", &value),
+            None => remove_var("KIMI_API_KEY"),
+        }
+        match prev_moon {
+            Some(value) => set_var("MOONSHOT_API_KEY", &value),
+            None => remove_var("MOONSHOT_API_KEY"),
+        }
     }
 }

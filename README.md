@@ -9,6 +9,7 @@ You open `app.db`, run SQL, and get rows. TypeScript, Python, the CLI, HTTP, and
 | | |
 | --- | --- |
 | Product | [`DESIGN.md`](DESIGN.md) |
+| Where it is now | [`STATUS.md`](STATUS.md) |
 | What shipped | [`PHASES.md`](PHASES.md) |
 | Guides | [`docs/`](docs/README.md) |
 | License | [MIT](LICENSE) |
@@ -83,9 +84,9 @@ SELECT aidb_agent('{"instructions":"Answer from documents. End with DONE.","goal
 SELECT id, json_extract(output_json, '$.message') FROM runs WHERE status = 'awaiting_approval';
 ```
 
-Keys stay in the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …). They are
-never stored in the file. Without keys, generate uses a fake model so tests stay
-offline.
+Keys stay in the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`KIMI_API_KEY`, …), typically via `.env`. They are never stored in the file.
+Without keys, generate uses a fake model so tests stay offline.
 
 More SQL: [`docs/sql.md`](docs/sql.md). First file: [`docs/getting-started.md`](docs/getting-started.md).
 
@@ -101,19 +102,22 @@ See [`docs/http.md`](docs/http.md) and [`studio/README.md`](studio/README.md).
 ## What you can build
 
 The application owns UI, auth, and domain tables. AIDB owns documents, retrieval,
-model calls, tools, and crash-resume in the same file. One shipped example:
-[`examples/stock`](examples/stock/README.md). More ideas: [`docs/apps.md`](docs/apps.md).
+model calls, tools, and crash-resume in the same file. Shipped examples:
+[`examples/stock`](examples/stock/README.md) (CLI desk),
+[`examples/support`](examples/support/README.md) (support UI), and
+[`examples/chat`](examples/chat/README.md) (chatbot). More ideas:
+[`docs/apps.md`](docs/apps.md).
 
 | Project | AIDB primitives | You add |
 | --- | --- | --- |
-| Cited knowledge assistant (docs, wiki, support) | `aidb_search` + `aidb_generate` → `{answer, sources[]}` | ingest, UI |
+| Cited knowledge assistant (docs, wiki, support) | `aidb_search` + `aidb_generate` → `{answer, sources[]}` | ingest, UI — see `examples/support` |
 | Equity / research desk | search, generate, classify, agent, HITL | watchlist, signals — see `examples/stock` |
 | Ticket or headline classifier | `aidb_classify` + `aidb_last_run_id()` | your `tickets` / `signals` table |
 | Structured extraction (invoice, filing, email) | `aidb_generate(prompt, content, schema)` | parsers, domain columns |
 | Approval-gated ops agent (email, write tools) | `aidb_agent` / workflow + `aidb_resume` | the tool, the human queue |
 | Decide-loop analyst (“brief NVDA only”) | `"decide":true`, search filter, generate | the goal text |
 | Personal / per-user memory | `aidb_memory_*` (documents, not a chat store) | user id, UI |
-| Threaded research session | `aidb_session` + `session_turns` view | the chat UI if you want one |
+| Threaded research session | `aidb_session` + `session_turns` view | the chat UI — see `examples/chat` |
 | Eval / plan bakeoff | `aidb_experiment` + `experiment_results` | labeled gold set |
 | Multi-corpus search (legal vs product) | `aidb_create_space` + `aidb_search(..., space)` | which docs go where |
 | Policy-bounded internal copilot | `aidb_set_policy` + catalog tools | allow-list, budgets |
@@ -130,6 +134,17 @@ and the desk's own tables live in one file.
 
 ```bash
 node examples/stock/stock.mjs demo --db /tmp/desk.db
+```
+
+[`examples/support`](examples/support/README.md) is a support desk UI, and
+[`examples/chat`](examples/chat/README.md) is a ChatGPT-style chat on an empty
+file (sessions + generate; paste your own docs if you want search). Vite
+frontend, Fastify backend holding `AI.open`. SQL stays in Node. Put keys in
+`.env`, then:
+
+```bash
+pnpm example:support   # Harbor  http://127.0.0.1:5174
+pnpm example:chat      # Relay   http://127.0.0.1:5175
 ```
 
 ## Development

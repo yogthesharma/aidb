@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aidb.workspace = true
-napi = { version = "2.16", default-features = false, features = ["napi8", "serde-json"] }
+napi = { version = "2.16", default-features = false, features = ["napi8", "serde-json", "async", "tokio_rt"] }
 napi-derive = "2.16"
 serde_json.workspace = true
 

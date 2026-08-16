@@ -9,6 +9,9 @@ desk.db-shm
 *.db
 *.db-wal
 *.db-shm
+.env
+.env.local
+.env.*.local
 node_modules/
 dist/
 *.egg-info/
@@ -22,6 +25,5 @@ bindings/python/aidb/*.dylib
 bindings/python/aidb/*.pyd
 bindings/python/build/
 bindings/python/dist/
-# Accidental npm install at the repo root. Studio lives in studio/.
-/package.json
+# Accidental npm install at the repo root (scripts-only package.json is tracked).
 /package-lock.json

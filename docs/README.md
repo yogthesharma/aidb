@@ -6,7 +6,7 @@ Canonical product docs are in the repository root:
 | --- | --- |
 | [`DESIGN.md`](../DESIGN.md) | Architecture, IR, optimizer, product boundary |
 | [`PHASES.md`](../PHASES.md) | Build order, SQL-first surface, what shipped |
-| [`README.md`](../README.md) | Install and a first query |
+| [`STATUS.md`](../STATUS.md) | Where v0 is: what works, what does not, JS/Python faces |
 
 Guides in this folder:
 
@@ -16,7 +16,9 @@ Guides in this folder:
 | [SQL surface](sql.md) | Functions, runs, search, agents, sessions, tokens |
 | [HTTP and Studio](http.md) | `aidb serve` and the inspect face |
 | [Projects](apps.md) | AI apps that fit the one-file model |
-| [Stock desk](../examples/stock/README.md) | One real app on AIDB only |
+| [Stock desk](../examples/stock/README.md) | One real app on AIDB only (CLI) |
+| [Support desk](../examples/support/README.md) | Product UI: frontend + AIDB backend |
+| [Chat](../examples/chat/README.md) | ChatGPT-style UI on an empty AIDB file |
 
 Contributing, security, and license:
 
