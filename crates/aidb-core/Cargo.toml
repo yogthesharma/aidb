@@ -1,0 +1,8 @@
+[package]
+name = "aidb-core"
+description = "Shared types, errors, and ids. No SQLite. No HTTP."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

@@ -1,0 +1,32 @@
+name: Feature or primitive
+description: Something AIDB should do in the file
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        After Phase 28, a new primitive is allowed only if a real AIDB-only app
+        needed it and it belongs in the **file** (not the application, not a provider).
+        See PHASES.md. Do not propose an `agents` table or a second store.
+  - type: textarea
+    id: need
+    attributes:
+      label: What did the app need
+      description: The SQL you wanted to run, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: belongs
+    attributes:
+      label: Where does this belong
+      options:
+        - In the file (engine primitive)
+        - In the application
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: out
+    attributes:
+      label: What this is not
+      description: Graph library, chat product, DataFusion, provider-only API, …

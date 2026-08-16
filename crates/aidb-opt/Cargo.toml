@@ -1,0 +1,10 @@
+[package]
+name = "aidb-opt"
+description = "Equivalence, approximation, and physical plan rewrites."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aidb-core.workspace = true
+aidb-ir.workspace = true

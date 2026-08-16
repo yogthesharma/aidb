@@ -1,0 +1,9 @@
+[package]
+name = "aidb-ir"
+description = "Logical and physical plan types. Wired in from Phase 4."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aidb-core.workspace = true

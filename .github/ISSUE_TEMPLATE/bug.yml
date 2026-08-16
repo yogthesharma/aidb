@@ -1,0 +1,46 @@
+name: Bug report
+description: Something AIDB does wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        SQL is the surface. Include the statement and the file's `schema_version` if you can.
+        Security issues: use a [private advisory](https://github.com/yogthesharma/aidb/security/advisories/new), not this form.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Expected vs actual. Paste SQL and the error / rows.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: git commit or `0.0.0` from this repo
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - fake (default / tests)
+        - OpenAI
+        - Anthropic
+        - other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 15 / Ubuntu 22.04 / Windows 11
+  - type: checkboxes
+    id: suite
+    attributes:
+      label: Can you reproduce with
+      options:
+        - label: `cargo test --workspace` (or a named test)
+        - label: `aidb sql` on a fresh file

@@ -1,0 +1,17 @@
+[package]
+name = "aidb-python"
+description = "PyO3 module for the Python AI.open face. Same engine, no ctypes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+autotests = false
+autobenches = false
+
+[lib]
+name = "aidb_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+aidb.workspace = true
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+serde_json.workspace = true

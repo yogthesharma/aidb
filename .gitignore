@@ -1,0 +1,27 @@
+/target
+**/*.rs.bk
+app.db
+app.db-wal
+app.db-shm
+desk.db
+desk.db-wal
+desk.db-shm
+*.db
+*.db-wal
+*.db-shm
+node_modules/
+dist/
+*.egg-info/
+__pycache__/
+.venv/
+.DS_Store
+bindings/typescript/*.node
+bindings/typescript/*.tgz
+bindings/python/aidb/*.so
+bindings/python/aidb/*.dylib
+bindings/python/aidb/*.pyd
+bindings/python/build/
+bindings/python/dist/
+# Accidental npm install at the repo root. Studio lives in studio/.
+/package.json
+/package-lock.json

@@ -1,0 +1,60 @@
+name: release
+
+# Build the faces we already have. Does not publish to npm/PyPI/crates.io
+# (no registry tokens in this repo). Artifacts: napi tarball, Python wheel, CLI.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build release natives and CLI
+        run: cargo build --release -p aidb-cli -p aidb-node -p aidb-python
+      - name: Stage napi addon
+        run: node bindings/typescript/scripts/stage-native.mjs --release
+      - name: Stage Python module
+        run: python bindings/python/scripts/stage_native.py --release
+      - name: Pack npm tarball
+        run: |
+          mkdir -p dist
+          npm pack --ignore-scripts --pack-destination ../../dist
+        working-directory: bindings/typescript
+      - name: Build Python wheel
+        run: |
+          python -m pip install -q setuptools wheel
+          python -m pip wheel --no-build-isolation --no-deps -w dist ./bindings/python
+      - name: Collect CLI binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ -f target/release/aidb.exe ]; then
+            cp target/release/aidb.exe "dist/aidb-${{ matrix.target }}.exe"
+          else
+            cp target/release/aidb "dist/aidb-${{ matrix.target }}"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aidb-${{ matrix.target }}
+          path: dist/

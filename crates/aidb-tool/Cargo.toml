@@ -1,0 +1,17 @@
+[package]
+name = "aidb-tool"
+description = "Capability catalog, policy, and tool runtime. MCP registers rows here."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aidb-core.workspace = true
+aidb-run.workspace = true
+aidb-storage.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true
+
+[[bin]]
+name = "fake-mcp"
+path = "src/bin/fake-mcp.rs"

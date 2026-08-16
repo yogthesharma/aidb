@@ -1,0 +1,23 @@
+[package]
+name = "aidb"
+description = "Public Rust API: open a file, execute SQL, query rows."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aidb-ai.workspace = true
+aidb-core.workspace = true
+aidb-index.workspace = true
+aidb-ir.workspace = true
+aidb-opt.workspace = true
+aidb-run.workspace = true
+aidb-sql.workspace = true
+aidb-storage.workspace = true
+aidb-tool.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+rusqlite.workspace = true
+# Test-only: talk to `aidb serve` over HTTP the way a client would.
+ureq.workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "aidb-sql"
+description = "SQL functions registered on the connection (search, generate, explain)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aidb-ai.workspace = true
+aidb-core.workspace = true
+aidb-index.workspace = true
+aidb-ir.workspace = true
+aidb-opt.workspace = true
+aidb-run.workspace = true
+aidb-storage.workspace = true
+aidb-tool.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true

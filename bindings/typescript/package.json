@@ -1,0 +1,35 @@
+{
+  "name": "aidb",
+  "version": "0.0.0",
+  "description": "Embedded AI database. One file. In-process napi addon.",
+  "type": "module",
+  "main": "src/index.mjs",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs"
+    }
+  },
+  "files": [
+    "src",
+    "aidb.*.node",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/stage-native.mjs",
+    "prepare": "node scripts/stage-native.mjs",
+    "prepack": "node scripts/stage-native.mjs --release",
+    "test": "node test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["arm64", "x64"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yogthesharma/aidb"
+  }
+}

@@ -1,0 +1,20 @@
+[package]
+name = "aidb-node"
+description = "N-API addon for the TypeScript AI.open face. Same engine, no CLI spawn."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+autotests = false
+autobenches = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+aidb.workspace = true
+napi = { version = "2.16", default-features = false, features = ["napi8", "serde-json"] }
+napi-derive = "2.16"
+serde_json.workspace = true
+
+[build-dependencies]
+napi-build = "2.1"

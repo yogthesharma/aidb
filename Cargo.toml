@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/aidb",
+    "crates/aidb-ai",
+    "crates/aidb-cli",
+    "crates/aidb-core",
+    "crates/aidb-ffi",
+    "crates/aidb-index",
+    "crates/aidb-ir",
+    "crates/aidb-node",
+    "crates/aidb-opt",
+    "crates/aidb-python",
+    "crates/aidb-run",
+    "crates/aidb-sql",
+    "crates/aidb-server",
+    "crates/aidb-storage",
+    "crates/aidb-tool",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/yogthesharma/aidb"
+
+[workspace.dependencies]
+aidb = { path = "crates/aidb" }
+aidb-ai = { path = "crates/aidb-ai" }
+aidb-core = { path = "crates/aidb-core" }
+aidb-ffi = { path = "crates/aidb-ffi" }
+aidb-index = { path = "crates/aidb-index" }
+aidb-ir = { path = "crates/aidb-ir" }
+aidb-opt = { path = "crates/aidb-opt" }
+aidb-run = { path = "crates/aidb-run" }
+aidb-sql = { path = "crates/aidb-sql" }
+aidb-server = { path = "crates/aidb-server" }
+aidb-storage = { path = "crates/aidb-storage" }
+aidb-tool = { path = "crates/aidb-tool" }
+keyring = "3"
+rusqlite = { version = "0.32", features = ["bundled", "functions"] }
+serde_json = "1"
+sqlite-vec = "0.1.6"
+ureq = { version = "2", features = ["json"] }

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aidb"
+version = "0.0.0"
+description = "Embedded AI database. One file. In-process PyO3 module."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Yog Sharma" }]
+keywords = ["database", "sqlite", "ai", "embedded"]
+
+[project.urls]
+Homepage = "https://github.com/yogthesharma/aidb"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["aidb"]
+
+[tool.setuptools.package-data]
+aidb = ["*.so", "*.dylib", "*.pyd", "aidb_native*"]

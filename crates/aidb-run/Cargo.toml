@@ -1,0 +1,12 @@
+[package]
+name = "aidb-run"
+description = "Durable runs, events, checkpoints, and resume."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aidb-core.workspace = true
+aidb-storage.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true

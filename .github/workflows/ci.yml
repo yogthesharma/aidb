@@ -1,0 +1,76 @@
+name: ci
+
+# The suite is not real until a machine besides the author's runs it. Offline by
+# design: no provider keys, so the live-provider tests skip themselves and every
+# other test uses the fake provider.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      # Tests spawn the `aidb` binary and the native faces, so build before testing:
+      # a stale binary fails much later, in confusing ways.
+      - name: Build
+        run: cargo build --workspace
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Stage native faces
+        run: |
+          node bindings/typescript/scripts/stage-native.mjs
+          python bindings/python/scripts/stage_native.py
+
+      - name: Test
+        run: cargo test --workspace
+
+      # Both face suites skip their CLI contract unless they are told where the
+      # binary is, so point them at it rather than letting a test vanish.
+      - name: TypeScript face
+        run: node test.mjs
+        working-directory: bindings/typescript
+        env:
+          AIDB_CLI_BIN: ${{ github.workspace }}/target/debug/aidb
+
+      - name: Python face
+        run: python bindings/python/test_open.py
+        env:
+          AIDB_CLI_BIN: ${{ github.workspace }}/target/debug/aidb
+
+      - name: Stock desk app
+        run: node examples/stock/stock.mjs demo --db "${{ runner.temp }}/desk.db"
+
+      - name: Studio inspect face
+        run: npm ci && npm test && npm run build
+        working-directory: studio
+        env:
+          AIDB_CLI_BIN: ${{ github.workspace }}/target/debug/aidb
+
