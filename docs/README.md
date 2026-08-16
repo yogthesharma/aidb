@@ -15,6 +15,7 @@ Guides in this folder:
 | [Getting started](getting-started.md) | Clone, build, first file |
 | [SQL surface](sql.md) | Functions, runs, search, agents, sessions, tokens |
 | [HTTP and Studio](http.md) | `aidb serve` and the inspect face |
+| [Projects](apps.md) | AI apps that fit the one-file model |
 | [Stock desk](../examples/stock/README.md) | One real app on AIDB only |
 
 Contributing, security, and license:

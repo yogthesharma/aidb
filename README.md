@@ -98,6 +98,30 @@ cd studio && npm run dev     # inspect face at http://127.0.0.1:5173
 
 See [`docs/http.md`](docs/http.md) and [`studio/README.md`](studio/README.md).
 
+## What you can build
+
+The application owns UI, auth, and domain tables. AIDB owns documents, retrieval,
+model calls, tools, and crash-resume in the same file. One shipped example:
+[`examples/stock`](examples/stock/README.md). More ideas: [`docs/apps.md`](docs/apps.md).
+
+| Project | AIDB primitives | You add |
+| --- | --- | --- |
+| Cited knowledge assistant (docs, wiki, support) | `aidb_search` + `aidb_generate` → `{answer, sources[]}` | ingest, UI |
+| Equity / research desk | search, generate, classify, agent, HITL | watchlist, signals — see `examples/stock` |
+| Ticket or headline classifier | `aidb_classify` + `aidb_last_run_id()` | your `tickets` / `signals` table |
+| Structured extraction (invoice, filing, email) | `aidb_generate(prompt, content, schema)` | parsers, domain columns |
+| Approval-gated ops agent (email, write tools) | `aidb_agent` / workflow + `aidb_resume` | the tool, the human queue |
+| Decide-loop analyst (“brief NVDA only”) | `"decide":true`, search filter, generate | the goal text |
+| Personal / per-user memory | `aidb_memory_*` (documents, not a chat store) | user id, UI |
+| Threaded research session | `aidb_session` + `session_turns` view | the chat UI if you want one |
+| Eval / plan bakeoff | `aidb_experiment` + `experiment_results` | labeled gold set |
+| Multi-corpus search (legal vs product) | `aidb_create_space` + `aidb_search(..., space)` | which docs go where |
+| Policy-bounded internal copilot | `aidb_set_policy` + catalog tools | allow-list, budgets |
+| Live generate inspect | `run_events` tokens + `aidb serve` / Studio | optional UI |
+
+Do not start from a ChatGPT clone or an `agents` table. Start from documents and
+runs. The transcript is `runs` (optionally grouped by `session_id`).
+
 ## A real app
 
 [`examples/stock`](examples/stock/README.md) is an equity research desk with no AI
